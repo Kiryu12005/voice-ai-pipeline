@@ -14,3 +14,13 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# AI Models
+models/
+pretrained_models/
+*.pth
+*.pt
+*.h5
+*.keras
+*.bin
+*.safetensors
