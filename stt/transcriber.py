@@ -57,9 +57,9 @@ class Transcriber:
             segments, info = self.model.transcribe(
                 window_audio,
                 language="en",
-                beam_size=1,
+                beam_size=3,
                 vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=300),
+                vad_parameters=dict(min_silence_duration_ms=700),
                 word_timestamps=True,
                 # Halluzination suppression
                 temperature=0.0,
@@ -67,7 +67,7 @@ class Transcriber:
                 compression_ratio_threshold=2.4,
                 log_prob_threshold=-0.25,
                 condition_on_previous_text=False,
-                #initial_prompt=initial_prompt
+                initial_prompt=initial_prompt
             )
 
             out = []
