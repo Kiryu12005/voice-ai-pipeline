@@ -1,6 +1,6 @@
 import queue
 import numpy as np
-from config import BUFFER_SIZE
+from stt.config import BUFFER_SIZE
 
 class AudioStream:
     def __init__(self):

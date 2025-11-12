@@ -2,18 +2,21 @@ import time
 import numpy as np
 from collections import deque
 
-from config import SAMPLE_RATE, DECODE_HOP_S, WINDOW_S, EPS, initial_prompt
+from stt.config import SAMPLE_RATE, DECODE_HOP_S, WINDOW_S, EPS, initial_prompt
 from faster_whisper import WhisperModel
 
 class Transcriber:
-    def __init__(self, audio_stream, model_size="small.en", device="cuda", compute_type="float16"):
+    def __init__(self, audio_stream, prompt_queue, model_size="small.en", device="cuda", compute_type="float16"):
         self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
         self.audio_stream = audio_stream
+        self.prompt_queue = prompt_queue
 
         self._chunks = deque()
         self._last_decode_time = 0.0
         self._total_samples = 0
         self._last_printed_time = 0.0
+        
+        self.sentence_buffer = ""
 
     def append_chunk(self, chunk):
         self._chunks.append(chunk)
@@ -95,3 +98,12 @@ class Transcriber:
 
                         print(current_text, end=' ', flush=True)
                         last_printed_text = current_text
+
+                        self.sentence_buffer += current_text + " "
+
+                        if any(p in current_text for p in [".", "!", "?"]):
+                            prompt_to_send = self.sentence_buffer.strip()
+                            self.sentence_buffer = ""
+
+                            print(f"\n[STT -> LLM]: {prompt_to_send}")
+                            self.prompt_queue.put(prompt_to_send)
