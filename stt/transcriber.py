@@ -62,7 +62,7 @@ class Transcriber:
                 language="en",
                 beam_size=3,
                 vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=700),
+                vad_parameters=dict(min_silence_duration_ms=1200),
                 word_timestamps=True,
                 # Halluzination suppression
                 temperature=0.0,
@@ -70,7 +70,7 @@ class Transcriber:
                 compression_ratio_threshold=2.4,
                 log_prob_threshold=-0.25,
                 condition_on_previous_text=False,
-                initial_prompt=initial_prompt
+                #initial_prompt=initial_prompt
             )
 
             out = []
@@ -105,5 +105,5 @@ class Transcriber:
                             prompt_to_send = self.sentence_buffer.strip()
                             self.sentence_buffer = ""
 
-                            print(f"\n[STT -> LLM]: {prompt_to_send}")
+                            print(f"\n[STT -> LLM]: {prompt_to_send}")     # Debug print
                             self.prompt_queue.put(prompt_to_send)
