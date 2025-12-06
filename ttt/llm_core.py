@@ -30,7 +30,7 @@ class LLMCore:
                 MODEL_PATH,
                 quantization_config=bnb_config,
                 device_map="auto",
-                torch_dtype=torch.float16,
+                dtype=torch.float16,
                 trust_remote_code=True,
             )
             self.llm.eval() # When model should learn comment out!!!!
@@ -54,7 +54,7 @@ class LLMCore:
                 messages,
                 tokenizer=True,
                 add_generation_prompt=True,
-                returnn_tensors=None,
+                return_tensors=None,
             )
 
             try:
@@ -75,7 +75,7 @@ class LLMCore:
 
                 response = self.tokenizer.decode(
                     output[0][input_ids.shape[-1]:],
-                    skpip_special_tokens=True
+                    skip_special_tokens=True
                 ).strip()
 
                 return response
