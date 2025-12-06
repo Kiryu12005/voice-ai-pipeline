@@ -11,7 +11,6 @@ venv/
 # IDE
 .vscode/
 .idea/
-.venv/
 
 # OS
 .DS_Store
