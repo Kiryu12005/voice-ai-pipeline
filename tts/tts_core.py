@@ -1,6 +1,7 @@
 import queue
 import time
 import torch
+import threading
 import numpy as np
 import sounddevice as sd
 from TTS.api import TTS
@@ -17,23 +18,58 @@ class TTSCore:
         self.tts = TTS("tts_models/en/ljspeech/vits").to(device)
         print("TTS Model loaded!")
 
+        self.word_buffer = []
+        self.audio_queue = queue.Queue()
+        self.playback_thread = threading.Thread(target=self._playback_loop, daemon=True)
+        self.playback_thread.start()
+
+    def _playback_loop(self):
+        with sd.OutputStream(samplerate=22050, channels=1, dtype="float32") as stream:
+            while True:
+                audio_data = self.audio_queue.get()
+
+                if audio_data is None:
+                    break
+
+                audio_data = np.asarray(audio_data, dtype=np.float32)
+                stream.write(audio_data)
+
     def process_responses(self):
         print("TTS-Core processing responses...")
 
-        while True:
-            llm_response = self.response_queue.get()
+        last_flush_time = time.time()
 
-            if llm_response is None:
+        while True:
+            item = self.response_queue.get()
+
+            if item is None:
+                self.audio_queue.put(None)
                 break
 
-            print(f"[JIJI SAYS]: {llm_response}")
+            text, is_final = item
 
-            wav = self.tts.tts(text=llm_response)
+            now = time.time()
 
-            audio_data = np.array(wav, dtype=np.float32)
+            if text:
+                self.word_buffer.append(text)
 
-            sd.play(audio_data, samplerate=22050)
-            sd.wait()
+            joined = " ".join(self.word_buffer).strip()
+
+            sentence_finished = any(joined.endswith(p) for p in ["!", "?", ".", "..."])
+            buffer_long_enough = len(joined) > 80
+            waited_too_long = (now - last_flush_time) > 0.7
+
+            should_speak = (is_final or sentence_finished or (buffer_long_enough and waited_too_long))
+
+            if should_speak and joined:
+                sentence = joined
+                self.word_buffer.clear()
+                last_flush_time = now
+
+                print(f"[JIJI SAYS]: {sentence}")
+
+                wav = self.tts.tts(text=sentence)
+                audio_data = np.array(wav, dtype=np.float32)
+                self.audio_queue.put(audio_data)
 
             self.response_queue.task_done()
-            time.sleep(0)
