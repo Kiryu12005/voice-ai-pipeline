@@ -55,21 +55,22 @@ class TTSCore:
 
             joined = " ".join(self.word_buffer).strip()
 
-            sentence_finished = any(joined.endswith(p) for p in ["!", "?", ".", "..."])
+            sentence_finished = any(joined.endswith(p) for p in [".", "...", "?", "!"])
             buffer_long_enough = len(joined) > 80
-            waited_too_long = (now - last_flush_time) > 0.7
+            waited_long_enough = (now - last_flush_time) > 0.7
 
-            should_speak = (is_final or sentence_finished or (buffer_long_enough and waited_too_long))
+            should_speak = (is_final or sentence_finished or (buffer_long_enough and waited_long_enough))
 
             if should_speak and joined:
                 sentence = joined
                 self.word_buffer.clear()
                 last_flush_time = now
-
+                
                 print(f"[JIJI SAYS]: {sentence}")
 
                 wav = self.tts.tts(text=sentence)
-                audio_data = np.array(wav, dtype=np.float32)
-                self.audio_queue.put(audio_data)
+                audio = np.array(wav, dtype=np.float32)
+
+                self.audio_queue.put(audio)
 
             self.response_queue.task_done()
