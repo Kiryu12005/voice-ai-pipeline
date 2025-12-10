@@ -2,7 +2,7 @@ import queue
 import threading
 import torch
 
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextIteratorStreamer
 from ttt.config import MODEL_PATH, SYSTEM_PROMPT
 
 class LLMCore:
@@ -30,7 +30,7 @@ class LLMCore:
                 MODEL_PATH,
                 quantization_config=bnb_config,
                 device_map="auto",
-                torch_dtype=torch.float16,
+                dtype=torch.float16,
                 trust_remote_code=True,
             )
             self.llm.eval() # When model should learn comment out!!!!
@@ -40,49 +40,67 @@ class LLMCore:
             self.llm = None
             self.tokenizer = None
 
-    def _generate_response(self, user_input: str) -> str:
+    def _stream_response(self, user_input: str):
         if not self.llm:
-            return "Error: LLM not loaded."
+            return "ERROR: LLM not loaded."
         
         with self.llm_lock:
             messages = [
                 {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": user_input}
+                {"role": "user", "content": user_input},
             ]
 
             input_ids = self.tokenizer.apply_chat_template(
                 messages,
                 tokenizer=True,
                 add_generation_prompt=True,
-                returnn_tensors=None,
+                return_tensors=None,
             )
 
             try:
                 input_ids = torch.tensor([input_ids], dtype=torch.long).to(self.llm.device)
-
                 attention_mask = torch.ones_like(input_ids).to(self.llm.device)
 
-                output = self.llm.generate(
-                    input_ids,
+                streamer = TextIteratorStreamer(
+                    self.tokenizer,
+                    skip_special_tokens=True,
+                    decode_with_prefix_space=True,
+                    skip_prompt=True,
+                )
+
+                gen_kwargs = dict(
+                    input_ids=input_ids,
                     attention_mask=attention_mask,
                     max_new_tokens=500,
                     do_sample=True,
                     temperature=0.7,
-                    # End token from llama3 chat model
                     eos_token_id=self.tokenizer.eos_token_id,
                     pad_token_id=self.tokenizer.pad_token_id,
+                    streamer=streamer,
                 )
 
-                response = self.tokenizer.decode(
-                    output[0][input_ids.shape[-1]:],
-                    skpip_special_tokens=True
-                ).strip()
+                t = threading.Thread(target=self.llm.generate, kwargs=gen_kwargs)
+                t.start()
 
-                return response
-            except Exception as e:
-                print(f"LLM error: {e}")
-                return "Error: Failed to generate response."
+                buf = ""
+                for chunk in streamer:
+                    buf += chunk
+                    while " " in buf:
+                        word, buf = buf.split(" ", 1)
+                        if word:
+                            yield (word, False)
+                
+                t.join()
+
+                if buf.strip():
+                    yield (buf.strip(), False)
+
+                yield ("", True)
             
+            except Exception as e:
+                print(f"LLM stream error: {e}")
+                yield ("Error: Failed to generate response.", True)
+
     def process_loop(self):
         print("LLM processor ready...")
 
@@ -92,7 +110,7 @@ class LLMCore:
             if user_input is None:
                 break
 
-            response = self._generate_response(user_input)
-            self.response_queue.put(response)
+            for word, is_final in self._stream_response(user_input):
+                self.response_queue.put((word, is_final))
 
             self.prompt_queue.task_done()
