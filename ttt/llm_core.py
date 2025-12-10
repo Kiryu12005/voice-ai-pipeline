@@ -1,6 +1,8 @@
 import queue
 import threading
 import torch
+import logging
+logger = logging.getLogger(__name__)
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextIteratorStreamer
 from ttt.config import MODEL_PATH, SYSTEM_PROMPT
@@ -15,7 +17,7 @@ class LLMCore:
 
         self.llm_lock = threading.Lock()
 
-        print(f"Loading LLM model from {MODEL_PATH}...")
+        logger.info(f"Loading LLM model from {MODEL_PATH}...")
         try:
             bnb_config = BitsAndBytesConfig(
                 load_in_4bit=True,
@@ -34,9 +36,9 @@ class LLMCore:
                 trust_remote_code=True,
             )
             self.llm.eval() # When model should learn comment out!!!!
-            print("LLM model loaded successfully.")
+            logger.info("LLM model loaded successfully.")
         except Exception as e:
-            print(f"ERROR: Failed to load LLM model. {e}")
+            logger.debug(f"ERROR: Failed to load LLM model. {e}")
             self.llm = None
             self.tokenizer = None
 
@@ -98,11 +100,11 @@ class LLMCore:
                 yield ("", True)
             
             except Exception as e:
-                print(f"LLM stream error: {e}")
+                logger.debug(f"LLM stream error: {e}")
                 yield ("Error: Failed to generate response.", True)
 
     def process_loop(self):
-        print("LLM processor ready...")
+        logger.info("LLM processor ready...")
 
         while True:
             user_input = self.prompt_queue.get()

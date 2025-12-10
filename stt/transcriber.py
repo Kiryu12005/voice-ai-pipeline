@@ -1,5 +1,8 @@
 import time
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
+
 from collections import deque
 
 from stt.config import SAMPLE_RATE, DECODE_HOP_S, WINDOW_S, EPS, initial_prompt
@@ -105,5 +108,5 @@ class Transcriber:
                             prompt_to_send = self.sentence_buffer.strip()
                             self.sentence_buffer = ""
 
-                            print(f"\n[STT -> LLM]: {prompt_to_send}")     # Debug print
+                            logger.debug(f"\n[STT -> LLM]: {prompt_to_send}")
                             self.prompt_queue.put(prompt_to_send)

@@ -25,3 +25,6 @@ pretrained_models/
 *.keras
 *.bin
 *.safetensors
+
+# Logs
+logs/

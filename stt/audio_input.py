@@ -1,5 +1,8 @@
 import queue
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
+
 from stt.config import BUFFER_SIZE
 
 class AudioStream:
@@ -7,8 +10,8 @@ class AudioStream:
         self.audio_queue = queue.Queue(BUFFER_SIZE)
 
     def audio_callback(self, indata, frames, time, status):
-        if status:
-            print(f"Status: {status}")
+        # if status:
+        #     logger.debug(f"Status: {status}")
         
         arr = indata.astype(np.float32, copy=False)
         mono = arr.mean(axis=1) if arr.ndim == 2 else arr

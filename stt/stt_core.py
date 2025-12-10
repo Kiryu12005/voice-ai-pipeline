@@ -1,13 +1,15 @@
 import threading
 import sounddevice as sd
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
-from audio_input import AudioStream
-from transcriber import Transcriber
-from config import SAMPLE_RATE, CHUNK_DURATION, DEVICE_INDEX
+from stt.audio_input import AudioStream
+from stt.transcriber import Transcriber
+from stt.config import SAMPLE_RATE, CHUNK_DURATION, DEVICE_INDEX
 
 def main():
-    print("Starting transcription... Press Ctrl+C to stop.")
+    logger.info("Starting transcription... Press Ctrl+C to stop.")
     audio_stream = AudioStream()
     transcriber = Transcriber(audio_stream)
 

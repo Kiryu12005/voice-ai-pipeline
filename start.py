@@ -1,5 +1,6 @@
 import threading
 import queue
+import logging
 import sounddevice as sd
 import time
 import sys
@@ -9,9 +10,12 @@ from stt.transcriber import Transcriber
 from ttt.llm_core import LLMCore
 from tts.tts_core import TTSCore
 from stt.config import SAMPLE_RATE, CHUNK_DURATION, DEVICE_INDEX
+from config.log_config import setup_logging
 
 def main():
-    print("Starting Jiji AI... Press Ctrl+C to stop.")
+    setup_logging()
+    logger = logging.getLogger(__name__)
+    logger.info("Starting Jiji AI... Press Ctrl+C to stop.")
 
     prompt_queue = queue.Queue()
     response_queue = queue.Queue()
@@ -27,13 +31,13 @@ def main():
     tts_thread = threading.Thread(target=tts_core.process_responses, daemon=True)
 
     transcriber_thread.start()
-    print("transcriber started...")
+    logger.info("transcriber started...")
     llm_thread.start()
-    print("llm_core started...")
+    logger.info("llm_core started...")
     tts_thread.start()
-    print("tts_core started...")
+    logger.info("tts_core started...")
 
-    print("\nAll processes started. Listening for audio input...")
+    logger.info("\nAll processes started. Listening for audio input...")
     try:
         with sd.InputStream(
             device=DEVICE_INDEX,
@@ -44,20 +48,20 @@ def main():
             blocksize=int(SAMPLE_RATE * CHUNK_DURATION),
             callback=audio_stream.audio_callback
         ):
-            print("System ready. Start speaking!")
+            logger.info("System ready. Start speaking!")
 
             while True:
                 time.sleep(1)
     
     except KeyboardInterrupt:
-        print("\nStopping Jiji AI...")
+        logger.info("\nStopping Jiji AI...")
     
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.debug(f"An error occurred: {e}")
     
     finally:
         # clean up threads
-        print("Programm exiting...")
+        logger.info("Programm exiting...")
         sys.exit(0)
 
 if __name__ == "__main__":

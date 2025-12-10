@@ -4,19 +4,23 @@ import torch
 import threading
 import numpy as np
 import sounddevice as sd
+import logging
+
 from TTS.api import TTS
+
+logger = logging.getLogger(__name__)
 
 class TTSCore:
     def __init__(self, response_queue: queue.Queue):
         self.response_queue = response_queue
 
-        print("TTS-Core initialized.")
+        logger.info("TTS-Core initialized.")
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Loading Coqui TTS on {device}...")
+        logger.debug(f"Loading Coqui TTS on {device}...")
 
         self.tts = TTS("tts_models/en/ljspeech/vits").to(device)
-        print("TTS Model loaded!")
+        logger.info("TTS Model loaded!")
 
         self.word_buffer = []
         self.audio_queue = queue.Queue()
@@ -35,7 +39,7 @@ class TTSCore:
                 stream.write(audio_data)
 
     def process_responses(self):
-        print("TTS-Core processing responses...")
+        logger.info("TTS-Core processing responses...")
 
         last_flush_time = time.time()
 
@@ -66,7 +70,7 @@ class TTSCore:
                 self.word_buffer.clear()
                 last_flush_time = now
                 
-                print(f"[JIJI SAYS]: {sentence}")
+                logger.info(f"[JIJI SAYS]: {sentence}")
 
                 wav = self.tts.tts(text=sentence)
                 audio = np.array(wav, dtype=np.float32)
